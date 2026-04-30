@@ -17,6 +17,7 @@ import { logger } from "./logger.js";
 import { McpOAuthProvider } from "./mcp-oauth-provider.js";
 import { supportsOAuth } from "./mcp-auth-flow.js";
 import { registerSamplingHandler, type ServerSamplingConfig } from "./sampling-handler.js";
+import { createMcpOutputSchemaValidator } from "./mcp-schema-validator.js";
 
 interface ServerConnection {
   client: Client;
@@ -150,7 +151,10 @@ export class McpServerManager {
   private createClient(serverName: string): Client {
     const client = new Client(
       { name: `pi-mcp-${serverName}`, version: "1.0.0" },
-      this.samplingConfig ? { capabilities: { sampling: {} } } : undefined,
+      {
+        ...(this.samplingConfig ? { capabilities: { sampling: {} } } : {}),
+        jsonSchemaValidator: createMcpOutputSchemaValidator(),
+      },
     );
     if (this.samplingConfig) {
       registerSamplingHandler(client, { ...this.samplingConfig, serverName });
@@ -209,7 +213,10 @@ export class McpServerManager {
     
     try {
       // Create a test client to verify the transport works
-      const testClient = new Client({ name: "pi-mcp-probe", version: "2.1.2" });
+      const testClient = new Client(
+        { name: "pi-mcp-probe", version: "2.1.2" },
+        { jsonSchemaValidator: createMcpOutputSchemaValidator() },
+      );
       await testClient.connect(streamableTransport);
       await testClient.close().catch(() => {});
       // Close probe transport before creating fresh one

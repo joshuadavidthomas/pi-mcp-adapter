@@ -58,7 +58,8 @@ describe("McpServerManager sampling", () => {
     await manager.connect("demo", { command: "node", args: ["server.js"] });
 
     const client = mocks.clients[0];
-    expect(client.options).toEqual({ capabilities: { sampling: {} } });
+    expect(client.options).toMatchObject({ capabilities: { sampling: {} } });
+    expect(client.options.jsonSchemaValidator).toBeDefined();
     expect(client.setRequestHandler).toHaveBeenCalledTimes(1);
     expect(client.setRequestHandler.mock.invocationCallOrder[0]).toBeLessThan(
       client.connect.mock.invocationCallOrder[0],
@@ -72,7 +73,7 @@ describe("McpServerManager sampling", () => {
     await manager.connect("demo", { command: "node", args: ["server.js"] });
 
     const client = mocks.clients[0];
-    expect(client.options).toBeUndefined();
+    expect(client.options).toMatchObject({ jsonSchemaValidator: expect.any(Object) });
     expect(client.setRequestHandler).not.toHaveBeenCalled();
   });
 });
