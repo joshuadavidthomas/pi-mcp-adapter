@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.3] - 2026-05-01
+
+### Added
+- Added environment variable and `~` expansion for stdio server `cwd` values.
+
 ## [2.5.2] - 2026-04-29
 
 ### Fixed

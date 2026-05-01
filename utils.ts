@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { platform } from "node:os";
+import { homedir, platform } from "node:os";
+import { join } from "node:path";
 import type { McpConfig } from "./types.js";
 
 async function execOpen(pi: ExtensionAPI, target: string, browser?: string) {
@@ -56,6 +57,33 @@ export function getConfigPathFromArgv(): string | undefined {
     return process.argv[idx + 1];
   }
   return undefined;
+}
+
+export function interpolateEnvVars(value: string): string {
+  return value
+    .replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] ?? "")
+    .replace(/\$env:(\w+)/g, (_, name) => process.env[name] ?? "");
+}
+
+export function interpolateEnvRecord(values: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!values) return undefined;
+
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(values)) {
+    resolved[key] = interpolateEnvVars(value);
+  }
+  return resolved;
+}
+
+export function resolveConfigPath(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+
+  const resolved = interpolateEnvVars(value);
+  if (resolved === "~") return homedir();
+  if (resolved.startsWith("~/") || resolved.startsWith("~\\")) {
+    return join(homedir(), resolved.slice(2));
+  }
+  return resolved;
 }
 
 export function truncateAtWord(text: string, target: number): string {

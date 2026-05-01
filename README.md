@@ -120,9 +120,10 @@ Pi-specific files are the write targets for imported or shared global servers wh
 |-------|-------------|
 | `command` | Executable for stdio transport |
 | `args` | Command arguments |
-| `env` | Environment variables (`${VAR}` interpolation) |
-| `cwd` | Working directory |
+| `env` | Environment variables; supports `${VAR}` and `$env:VAR` interpolation |
+| `cwd` | Working directory; supports `${VAR}`, `$env:VAR`, and `~` expansion |
 | `url` | HTTP endpoint (StreamableHTTP with SSE fallback) |
+| `headers` | HTTP headers; supports `${VAR}` and `$env:VAR` interpolation |
 | `auth` | `"bearer"` or `"oauth"` |
 | `oauth.grantType` | `"authorization_code"` (default) or `"client_credentials"` for non-interactive machine auth |
 | `bearerToken` / `bearerTokenEnv` | Token or env var name |
