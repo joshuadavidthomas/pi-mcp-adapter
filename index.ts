@@ -9,7 +9,7 @@ import { loadMetadataCache } from "./metadata-cache.js";
 import { executeCall, executeConnect, executeDescribe, executeList, executeSearch, executeStatus, executeUiMessages } from "./proxy-modes.js";
 import { getConfigPathFromArgv, truncateAtWord } from "./utils.js";
 import { initializeOAuth, shutdownOAuth } from "./mcp-auth-flow.js";
-import { createMcpCallRenderer, renderMcpResult, summarizeDirectMcpCall } from "./mcp-tool-renderer.js";
+import { McpCallComponent, McpResultComponent } from "./mcp-tool-renderer.js";
 
 export default function mcpAdapter(pi: ExtensionAPI) {
   let state: McpExtensionState | null = null;
@@ -74,8 +74,14 @@ export default function mcpAdapter(pi: ExtensionAPI) {
       promptSnippet: truncateAtWord(spec.description, 100) || `MCP tool from ${spec.serverName}`,
       parameters: Type.Unsafe<Record<string, unknown>>(spec.inputSchema || { type: "object", properties: {} }),
       execute: createDirectToolExecutor(() => state, () => initPromise, spec),
-      renderCall: createMcpCallRenderer(spec.prefixedName, summarizeDirectMcpCall),
-      renderResult: renderMcpResult,
+      renderCall: (args, theme, context) => new McpCallComponent(
+        spec.prefixedName,
+        args,
+        context.expanded,
+        theme,
+        "direct",
+      ),
+      renderResult: (result, options, theme, context) => new McpResultComponent(result, options.expanded, context.isError, theme),
     });
   }
 
@@ -250,16 +256,14 @@ export default function mcpAdapter(pi: ExtensionAPI) {
         server: Type.Optional(Type.String({ description: "Filter to specific server (also disambiguates tool calls)" })),
         action: Type.Optional(Type.String({ description: "Action: 'ui-messages' to retrieve prompts/intents from UI sessions" })),
       }),
-      renderCall: createMcpCallRenderer("mcp", (args) => {
-        if (args.action === "ui-messages") return "ui-messages";
-        if (args.tool) return `tool ${args.tool}`;
-        if (args.connect) return `connect ${args.connect}`;
-        if (args.describe) return `describe ${args.describe}`;
-        if (args.search) return `search ${JSON.stringify(args.search)}`;
-        if (args.server) return `server ${args.server}`;
-        return "status";
-      }),
-      renderResult: renderMcpResult,
+      renderCall: (args, theme, context) => new McpCallComponent(
+        "mcp",
+        args,
+        context.expanded,
+        theme,
+        "proxy",
+      ),
+      renderResult: (result, options, theme, context) => new McpResultComponent(result, options.expanded, context.isError, theme),
       async execute(_toolCallId, params: {
         tool?: string;
         args?: string;
