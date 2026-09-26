@@ -137,7 +137,7 @@ export interface UiServerHandle {
     sessionToken: string;
     serverName: string;
     toolName: string;
-    viewer?: "browser" | "glimpse" | "suppressed";
+    viewer?: "browser" | "glimpse" | "orca" | "suppressed";
     windowOpen?: boolean;
     close: (reason?: string) => void;
     sendToolInput: (args: Record<string, unknown>) => void;
@@ -524,7 +524,7 @@ export interface PromptMetadata {
     arguments: McpPromptArgument[];
 }
 export interface DirectToolSpec {
-    /** Registered inactive; `mcp({ search })` activates it (directTools: "search"). */
+    /** Registered inactive; `mcp({ search })` or a successful `mcp({ tool })` call activates it (directTools: "search"). */
     lazy?: boolean;
     serverName: string;
     originalName: string;

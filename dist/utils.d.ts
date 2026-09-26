@@ -22,6 +22,8 @@ export declare function resolveCommandSecret(value: string | undefined, context:
 export declare function resolveCommandSecretsRecord(values: Record<string, string> | undefined, context: (key: string) => string): Record<string, string> | undefined;
 export declare function resolveServerUrl(definition: Pick<ServerEntry, "url">, environment?: NodeJS.ProcessEnv): string | undefined;
 export declare function resolveConfigPath(value: string | undefined, environment?: NodeJS.ProcessEnv): string | undefined;
+/** Expand a leading home-directory marker without interpolating environment variables. */
+export declare function expandHomePath(value: string | undefined): string | undefined;
 export declare function resolveBearerToken(definition: Pick<ServerEntry, "bearerToken" | "bearerTokenEnv">, environment?: NodeJS.ProcessEnv): string | undefined;
 /** Remove OSC control strings, including payloads that have no terminator. */
 export declare function stripOscSequences(text: string): string;

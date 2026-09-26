@@ -59,7 +59,7 @@ export function computeServerHash(definition, environment = process.env) {
     // Exclude lifecycle, idleTimeout, requestTimeoutMs, debug — those are runtime behavior settings
     // that don't change which tools a server exposes.
     const identity = {
-        command: definition.command,
+        command: resolveConfigPath(definition.command, environment),
         args: definition.args,
         socket: resolveConfigPath(definition.socket, environment),
         env: isBuiltInAgentPlugin(definition, "env") ? definition.env : interpolateEnvRecord(definition.env, environment),
