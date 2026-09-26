@@ -7,18 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.38.0] - 2026-09-26
+
+### Highlights
+
+- Search-mode tools become full direct tools after a successful proxy call, without requiring a separate search first.
+- Runtime-registered keep-alive servers now publish their tools even when Pi starts with no enabled MCP servers.
+- Compact `mcpScript` results show which tools ran, how often they ran, and how many calls failed.
+- Stdio configurations support home-relative paths, and MCP UI windows can open in Orca.
+- OpenCode v2 imports, OAuth credential access, and Rust MCP schemas are more reliable.
+
 ### Added
 
-- A successful `mcp({ tool })` call for a held `directTools: "search"` tool activates it the same additive way a search hit does, so the next call uses its real schema. Thanks to [@chiptoe-svg](https://github.com/chiptoe-svg) for [PR #670](https://github.com/nicobailon/pi-mcp-adapter/pull/670).
-- MCP stdio server commands, arguments, and working directories support home-relative paths. Thanks to [@FRFlo](https://github.com/FRFlo) for [PR #655](https://github.com/nicobailon/pi-mcp-adapter/pull/655).
+- A successful `mcp({ tool })` call now activates a held `directTools: "search"` tool, so later calls use its full schema even if the model skipped search. Thanks to [@chiptoe-svg](https://github.com/chiptoe-svg) for [PR #670](https://github.com/nicobailon/pi-mcp-adapter/pull/670).
+- MCP stdio server commands, arguments, and working directories now support home-relative paths. Thanks to [@FRFlo](https://github.com/FRFlo) for [PR #655](https://github.com/nicobailon/pi-mcp-adapter/pull/655).
 - Set `MCP_UI_VIEWER=orca` to open MCP UI windows in Orca. Thanks to [@jaesimio](https://github.com/jaesimio) for [PR #654](https://github.com/nicobailon/pi-mcp-adapter/pull/654).
 
 ### Fixed
 
 - Keep-alive servers registered at runtime now connect and publish their tools even when no configured servers are enabled at startup. Thanks to [@ahodges22](https://github.com/ahodges22) for [issue #671](https://github.com/nicobailon/pi-mcp-adapter/issues/671).
-- Existing `ancestorConfigRoots` directories under the home directory that do not contain the current working directory are treated as non-matching roots without warnings; invalid entries still warn. Thanks to [@TheEdgeOfRage](https://github.com/TheEdgeOfRage) for [issue #668](https://github.com/nicobailon/pi-mcp-adapter/issues/668) and [PR #669](https://github.com/nicobailon/pi-mcp-adapter/pull/669).
-- Collapsed `mcpScript` rows in compact rendering are titled `mcpScript` and list the MCP tools the script called, from its call trace with repeat counts, instead of showing only the first line of output. Failed traced operations show as a `✗N` status after the title, which narrow rows keep by shrinking the title; traced paths that do not look like tool names are shown as quoted, escaped strings. Script code is still never copied into the row. Thanks to [@sargismarkosyan](https://github.com/sargismarkosyan) for [PR #666](https://github.com/nicobailon/pi-mcp-adapter/pull/666).
-- Metadata refreshes respect host removal of the `mcp` gateway unless the adapter actually removed it through active-set fallback and still owns that deactivation. On hosts without `unregisterTool`, the gateway is hidden when direct tools cover the server and restored when needed; observing it active relinquishes fallback ownership. An unobserved host reactivation and removal between syncs cannot be distinguished from the adapter's deactivation. Thanks to [@xulongwu4](https://github.com/xulongwu4) for [PR #665](https://github.com/nicobailon/pi-mcp-adapter/pull/665).
+- Valid `ancestorConfigRoots` entries that do not contain the current working directory are ignored without warnings. Invalid entries still warn. Thanks to [@TheEdgeOfRage](https://github.com/TheEdgeOfRage) for [issue #668](https://github.com/nicobailon/pi-mcp-adapter/issues/668) and [PR #669](https://github.com/nicobailon/pi-mcp-adapter/pull/669).
+- Collapsed `mcpScript` results now show the tools called, repeat counts, and a visible failure count instead of only the first output line. Unsafe or ambiguous tool names are quoted and escaped, and script code remains hidden. Thanks to [@sargismarkosyan](https://github.com/sargismarkosyan) for [PR #666](https://github.com/nicobailon/pi-mcp-adapter/pull/666).
+- Metadata refreshes no longer reactivate an `mcp` gateway tool removed by the host. On hosts without `unregisterTool`, the adapter can still hide the gateway when direct tools cover the server and restore it when needed. Thanks to [@xulongwu4](https://github.com/xulongwu4) for [PR #665](https://github.com/nicobailon/pi-mcp-adapter/pull/665).
 - `mcpScript` no longer asks models to load its intentionally hidden manual skill. Thanks to [@k03mad](https://github.com/k03mad) for [#659](https://github.com/nicobailon/pi-mcp-adapter/issues/659).
 - OAuth credential reads now reuse a healthy keyring Entry without retaining secret values, avoiding repeated native sessions while still observing external updates. Thanks to [@mmarabel](https://github.com/mmarabel) for [#657](https://github.com/nicobailon/pi-mcp-adapter/issues/657).
 - Suppressing MCP UI windows with `MCP_UI_VIEWER=none` / `off` / `disabled` no longer prints raw output into the TUI. Thanks to [@andreafspeziale](https://github.com/andreafspeziale) for [#656](https://github.com/nicobailon/pi-mcp-adapter/issues/656).
