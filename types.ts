@@ -740,7 +740,7 @@ export interface PromptMetadata {
 }
 
 export interface DirectToolSpec {
-  /** Registered inactive; `mcp({ search })` activates it (directTools: "search"). */
+  /** Registered inactive; `mcp({ search })` or a successful `mcp({ tool })` call activates it (directTools: "search"). */
   lazy?: boolean;
   serverName: string;
   originalName: string;

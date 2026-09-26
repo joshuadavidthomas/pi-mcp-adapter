@@ -342,7 +342,7 @@ function installMcpAdapter(pi: ExtensionAPI, options: McpAdapterOptions) {
   const reportedDirectToolNamesByServer = new Map<string, Set<string>>();
   const registeredNamespaceProxyTools = new Set<string>();
   const fallbackDeactivatedTools = new Set<string>();
-  // directTools: "search" — registered inactive, activated by mcp({ search }).
+  // directTools: "search" — registered inactive, activated by mcp({ search }) or a successful mcp({ tool }) call.
   const lazyDirectTools = new Set<string>();
   const searchActivatedTools = new Set<string>();
   const toolRenderOptions = resolveMcpToolRenderOptions(earlyConfig.settings);
@@ -450,10 +450,10 @@ function installMcpAdapter(pi: ExtensionAPI, options: McpAdapterOptions) {
   }
 
   /**
-   * Activate the lazy direct tools a search matched, additively. This is the
-   * one place a search-mode tool becomes active; nothing is ever deactivated
-   * here. Returns the names that actually changed state so the result can
-   * report only real additions.
+   * Activate lazy direct tools additively — the ones a search matched, or the
+   * one a successful proxy call named. This is the one place a search-mode tool
+   * becomes active; nothing is ever deactivated here. Returns the names that
+   * actually changed state so the result can report only real additions.
    */
   function activateSearchMatches(matches: ReadonlyArray<{ server: string; tool: string }>): string[] {
     const activeTools = getActiveToolsIfReady();
@@ -1936,7 +1936,23 @@ function installMcpAdapter(pi: ExtensionAPI, options: McpAdapterOptions) {
             : proxyModes.executeAuthComplete(proxyState, params.server, input);
         }
         if (params.tool) {
-          return proxyModes.executeCall(proxyState, params.tool, parsedArgs, params.server, getPiTools, signal);
+          const result = await proxyModes.executeCall(proxyState, params.tool, parsedArgs, params.server, getPiTools, signal);
+          assertRuntimeGuard(proxyGuard);
+          if (lazyDirectTools.size === 0) return result;
+          // A successful proxy call is as clear a signal as a search hit: the
+          // model wants this tool. Activate it the same additive way, keyed on
+          // the registered (prefixed) name the call reports as canonicalTool.
+          // Failed calls (lookup, approval, tool errors) carry details.error
+          // and activate nothing.
+          const identity = result.details as { error?: unknown; server?: unknown; canonicalTool?: unknown } | undefined;
+          if (!identity || identity.error !== undefined || typeof identity.server !== "string" || typeof identity.canonicalTool !== "string") return result;
+          holdLazyToolsInactive();
+          const added = activateSearchMatches([{ server: identity.server, tool: identity.canonicalTool }]);
+          if (added.length === 0) return result;
+          // Content is returned untouched: the call's output is already sized to
+          // the output limits and is what a compact view previews. The tool
+          // description tells the model a called tool is direct from then on.
+          return { ...result, details: { ...(result.details ?? {}), activated: added }, addedToolNames: added };
         }
         if (params.connect) {
           return connectAndReport(proxyState, params.connect, signal, _ctx as ExtensionContext);
@@ -1979,8 +1995,8 @@ function installMcpAdapter(pi: ExtensionAPI, options: McpAdapterOptions) {
       cache,
       envRaw === undefined || envRaw === "__none__" ? undefined : envDirectToolOverride,
     );
-    // Search-mode tools are registered INACTIVE and `mcp({ search })` is their only
-    // activation entry point, so dropping the gateway strands them: every tool held, nothing
+    // Search-mode tools are registered INACTIVE and the `mcp` gateway (search, or a
+    // proxy call) is their only activation entry point, so dropping it strands them: every tool held, nothing
     // able to activate one. Keep it whenever any spec depends on it.
     const hasSearchModeSpecs = directSpecs.some((spec) => spec.lazy === true);
     const shouldRegisterProxyTool =

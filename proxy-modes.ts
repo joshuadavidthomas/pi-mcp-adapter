@@ -1374,7 +1374,7 @@ export async function executeCall(
   }
 
   const callIdentity = toolMeta.resourceUri
-    ? { server: serverName, resourceUri: toolMeta.resourceUri }
+    ? { server: serverName, resourceUri: toolMeta.resourceUri, canonicalTool: toolMeta.name }
     : { server: serverName, tool: toolMeta.originalName, canonicalTool: toolMeta.name };
 
   let connection = state.manager.getConnection(serverName);

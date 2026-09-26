@@ -3833,7 +3833,7 @@ describe("mcpAdapter session lifecycle", () => {
   });
 });
 
-describe("directTools: \"search\" — registered inactive, activated by search", () => {
+describe("directTools: \"search\" — registered inactive, activated by search or a proxy call", () => {
   const originalDirectTools = process.env.MCP_DIRECT_TOOLS;
   beforeEach(() => {
     delete process.env.MCP_DIRECT_TOOLS;
@@ -3977,11 +3977,67 @@ describe("directTools: \"search\" — registered inactive, activated by search",
     expect(activeTools()).toEqual(["bash", "mcp", "demo_alpha"]);
   });
 
-  it("a proxy call for a held tool does not activate it", async () => {
-    const { activeTools, proxyTool } = await boot();
-    mocks.executeCall.mockResolvedValue({ content: [{ type: "text", text: "ok" }], details: { mode: "call", server: "demo", tool: "alpha" } });
+  const callResult = (details: Record<string, unknown>) => ({ content: [{ type: "text", text: "ok" }], details: { mode: "call", ...details } });
+
+  it("a successful proxy call for a held tool activates it and reports it as addedToolNames", async () => {
+    const { handlers, activeTools, proxyTool } = await boot();
+    mocks.executeCall.mockResolvedValue(callResult({ server: "demo", tool: "alpha", canonicalTool: "demo_alpha" }));
     const result = await proxyTool.execute("call-1", { tool: "demo_alpha", args: {} });
+    expect(activeTools()).toEqual(["bash", "mcp", "demo_alpha"]);
+    expect(result.addedToolNames).toEqual(["demo_alpha"]);
+    // The call's output comes back untouched (already sized to the output limits).
+    expect(result.content).toEqual([{ type: "text", text: "ok" }]);
+    expect(result.details.activated).toEqual(["demo_alpha"]);
+    // Calling an already-active tool through the proxy changes nothing.
+    const again = await proxyTool.execute("call-2", { tool: "demo_alpha", args: {} });
+    expect(again.addedToolNames).toBeUndefined();
+    // Same lifetime as a search hit: kept across turns, cleared by the next session.
+    await handlers.get("before_agent_start")?.({}, {});
+    expect(activeTools()).toEqual(["bash", "mcp", "demo_alpha"]);
+    await handlers.get("session_start")?.({}, {});
+    expect(activeTools()).toEqual(["bash", "mcp"]);
+  });
+
+  it("a proxy call for a held resource reader activates it", async () => {
+    const reader = { ...lazySpec("read_notes"), resourceUri: "file:///notes.md" };
+    const { activeTools, proxyTool } = await boot({}, [reader, lazySpec("beta")]);
+    mocks.executeCall.mockResolvedValue(callResult({ server: "demo", resourceUri: "file:///notes.md", canonicalTool: "demo_read_notes" }));
+    const result = await proxyTool.execute("call-1", { tool: "demo_read_notes", args: {} });
+    expect(activeTools()).toEqual(["bash", "mcp", "demo_read_notes"]);
+    expect(result.addedToolNames).toEqual(["demo_read_notes"]);
+  });
+
+  it.each([
+    ["tool_not_found", { error: "tool_not_found", requestedTool: "demo_alpha" }],
+    ["a tool error", { error: "tool_error", server: "demo", tool: "alpha", canonicalTool: "demo_alpha" }],
+    ["an approval denial", { error: "approval_denied", server: "demo", tool: "alpha", canonicalTool: "demo_alpha" }],
+  ])("a proxy call that fails with %s activates nothing", async (_label, details) => {
+    const { activeTools, proxyTool } = await boot();
+    mocks.executeCall.mockResolvedValue(callResult(details));
+    const result = await proxyTool.execute("call-1", { tool: "demo_alpha", args: {} });
+    expect(activeTools()).toEqual(["bash", "mcp"]);
     expect(result.addedToolNames).toBeUndefined();
+  });
+
+  it("a proxy call naming another server's tool activates nothing", async () => {
+    const { activeTools, proxyTool } = await boot();
+    mocks.executeCall.mockResolvedValue(callResult({ server: "other", tool: "alpha", canonicalTool: "demo_alpha" }));
+    const result = await proxyTool.execute("call-1", { tool: "demo_alpha", args: {} });
+    expect(activeTools()).toEqual(["bash", "mcp"]);
+    expect(result.addedToolNames).toBeUndefined();
+  });
+
+  it("does not let a proxy call from a replaced session activate tools", async () => {
+    const { handlers, activeTools, proxyTool } = await boot();
+    const pendingCall = createDeferred<ReturnType<typeof callResult>>();
+    mocks.executeCall.mockReturnValue(pendingCall.promise);
+    const execution = proxyTool.execute("call-1", { tool: "demo_alpha", args: {} });
+    await vi.waitFor(() => expect(mocks.executeCall).toHaveBeenCalledOnce());
+
+    await handlers.get("session_start")?.({}, {});
+    pendingCall.resolve(callResult({ server: "demo", tool: "alpha", canonicalTool: "demo_alpha" }));
+
+    await expect(execution).rejects.toThrow("MCP extension session restarted");
     expect(activeTools()).toEqual(["bash", "mcp"]);
   });
 
